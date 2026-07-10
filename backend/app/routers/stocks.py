@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+
 from app.services.data_fetcher import fetch_stock_data
 from app.schemas.stock import StockHistory
 
@@ -30,39 +31,27 @@ def search_stock(q: str):
     }
 
 
-@router.get(
-    "/{ticker}/history",
-    response_model=list[StockHistory]
-)
-def get_history(
-    ticker: str,
-    timeframe: str = "1Y"
-):
+@router.get("/{ticker}/history", response_model=list[StockHistory])
+def get_history(ticker: str, timeframe: str = "1Y"):
     period_map = {
         "1M": "1mo",
         "3M": "3mo",
         "6M": "6mo",
-        "1Y": "1y"
+        "1Y": "1y",
     }
 
     if timeframe not in period_map:
         raise HTTPException(
             status_code=400,
-            detail="Invalid timeframe"
+            detail=f"Invalid timeframe '{timeframe}'. Must be one of {list(period_map.keys())}."
         )
 
     try:
-
-        df = fetch_stock_data(
-            ticker=ticker,
-            period=period_map[timeframe]
-        )
-
+        df = fetch_stock_data(ticker=ticker, period=period_map[timeframe])
         return df.to_dict(orient="records")
-
-    except Exception:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Ticker not found"
-        )
+    except ValueError as e:
+        # e.g. no data found for ticker
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        print("ERROR:", e)
+        raise HTTPException(status_code=500, detail=str(e))

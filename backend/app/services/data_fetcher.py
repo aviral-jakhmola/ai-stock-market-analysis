@@ -1,14 +1,5 @@
-"""
-data_fetcher.py
-
-Downloads historical stock data using Yahoo Finance.
-
-Run:
-python services/data_fetcher.py
-"""
 
 import os
-from datetime import datetime
 
 import pandas as pd
 import yfinance as yf
@@ -64,6 +55,14 @@ def fetch_stock_data(
 
     # Convert index into Date column
     df.reset_index(inplace=True)
+
+    # Flatten MultiIndex columns if yfinance returns them
+    # (common in yfinance 1.x even for a single ticker)
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+
+    print("\nColumns:")
+    print(df.columns.tolist())
 
     # Rename columns
     df.rename(
