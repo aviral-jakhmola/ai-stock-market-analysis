@@ -7,6 +7,8 @@ import VolumeChart from "./components/VolumeChart";
 import LoadingSpinner from "./components/LoadingSpinner";
 import StockData from "./components/StockData";
 import api from "./services/api";
+import RSIChart from "./components/RSIChart";
+import MACDChart from "./components/MACDChart";
 
 const TIMEFRAMES = ["1M", "3M", "6M", "1Y", "5Y"];
 
@@ -121,6 +123,8 @@ function App() {
 
                         <CandlestickChart data={stockData} />
                         <VolumeChart data={stockData} />
+                        <RSIChart data={stockData} />
+                        <MACDChart data={stockData} />
                         <StockData data={stockData} />
                     </>
                 )}

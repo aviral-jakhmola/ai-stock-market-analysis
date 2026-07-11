@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException
+import pandas as pd
 
 from app.services.data_fetcher import fetch_stock_data
+from app.services.indicators import add_indicators
 from app.schemas.stock import StockHistory
 
 router = APIRouter(
@@ -49,9 +51,12 @@ def get_history(ticker: str, timeframe: str = "1Y"):
 
     try:
         df = fetch_stock_data(ticker=ticker, period=period_map[timeframe])
+        df = add_indicators(df)
+
+        df = df.where(pd.notnull(df), None)
+
         return df.to_dict(orient="records")
     except ValueError as e:
-        # e.g. no data found for ticker
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         print("ERROR:", e)

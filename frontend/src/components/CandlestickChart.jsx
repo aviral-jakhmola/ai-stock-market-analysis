@@ -8,7 +8,6 @@ function CandlestickChart({ data }) {
     );
 
     useEffect(() => {
-        // Watch for the "dark" class being added/removed on <html>
         const observer = new MutationObserver(() => {
             setIsDark(document.documentElement.classList.contains("dark"));
         });
@@ -34,24 +33,73 @@ function CandlestickChart({ data }) {
         );
     }
 
-    const series = [
-        {
-            data: data.map((point) => ({
+    const candlestickSeries = {
+        name: "Price",
+        type: "candlestick",
+        data: data.map((point) => ({
+            x: new Date(point.date),
+            y: [point.open, point.high, point.low, point.close],
+        })),
+    };
+
+    const buildLineSeries = (field, name) => ({
+        name,
+        type: "line",
+        data: data
+            .filter((point) => point[field] !== null && point[field] !== undefined)
+            .map((point) => ({
                 x: new Date(point.date),
-                y: [point.open, point.high, point.low, point.close],
+                y: point[field],
             })),
-        },
+    });
+
+    const sma20Series = buildLineSeries("sma_20", "SMA 20");
+    const sma50Series = buildLineSeries("sma_50", "SMA 50");
+    const ema20Series = buildLineSeries("ema_20", "EMA 20");
+    const ema50Series = buildLineSeries("ema_50", "EMA 50");
+    const bbUpperSeries = buildLineSeries("bb_upper", "BB Upper");
+    const bbLowerSeries = buildLineSeries("bb_lower", "BB Lower");
+
+    const series = [
+        candlestickSeries,
+        sma20Series,
+        sma50Series,
+        ema20Series,
+        ema50Series,
+        bbUpperSeries,
+        bbLowerSeries,
     ];
 
     const options = {
         chart: {
-            type: "candlestick",
             height: 350,
             toolbar: { show: true },
             background: "transparent",
         },
         theme: {
             mode: isDark ? "dark" : "light",
+        },
+        stroke: {
+            // 0: candlestick, 1: SMA20, 2: SMA50, 3: EMA20, 4: EMA50, 5: BB Upper, 6: BB Lower
+            width: [1, 2, 2, 2, 2, 1, 1],
+            dashArray: [0, 0, 0, 0, 0, 4, 4],
+        },
+        colors: [
+            "#000000", // candlestick (unused directly, controlled by plotOptions)
+            "#f59e0b", // SMA 20 - amber
+            "#8b5cf6", // SMA 50 - purple
+            "#06b6d4", // EMA 20 - cyan
+            "#ec4899", // EMA 50 - pink
+            "#94a3b8", // BB Upper - gray
+            "#94a3b8", // BB Lower - gray
+        ],
+        plotOptions: {
+            candlestick: {
+                colors: {
+                    upward: "#22c55e",
+                    downward: "#ef4444",
+                },
+            },
         },
         grid: {
             borderColor: isDark ? "#374151" : "#e5e7eb",
@@ -67,6 +115,15 @@ function CandlestickChart({ data }) {
             labels: {
                 style: { colors: isDark ? "#9ca3af" : "#374151" },
             },
+        },
+        legend: {
+            show: true,
+            labels: {
+                colors: isDark ? "#9ca3af" : "#374151",
+            },
+        },
+        tooltip: {
+            shared: true,
         },
     };
 
