@@ -38,6 +38,7 @@ def get_history(ticker: str, timeframe: str = "1Y"):
         "3M": "3mo",
         "6M": "6mo",
         "1Y": "1y",
+        "5Y": "5y",
     }
 
     if timeframe not in period_map:
