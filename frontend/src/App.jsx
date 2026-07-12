@@ -9,6 +9,7 @@ import StockData from "./components/StockData";
 import api from "./services/api";
 import RSIChart from "./components/RSIChart";
 import MACDChart from "./components/MACDChart";
+import RecommendationCard from "./components/RecommendationCard";
 
 const TIMEFRAMES = ["1M", "3M", "6M", "1Y", "5Y"];
 
@@ -20,6 +21,7 @@ const formatINR = (value) =>
 
 function App() {
     const [stockData, setStockData] = useState([]);
+    const [recommendation, setRecommendation] = useState(null);
     const [loading, setLoading] = useState(false);
     const [ticker, setTicker] = useState(null);
     const [timeframe, setTimeframe] = useState("1Y");
@@ -27,10 +29,12 @@ function App() {
     const fetchStock = async (symbol, tf) => {
         setLoading(true);
         try {
-            const response = await api.get(
-                `/api/stocks/${symbol}/history?timeframe=${tf}`
-            );
-            setStockData(response.data);
+            const [historyRes, recRes] = await Promise.all([
+                api.get(`/api/stocks/${symbol}/history?timeframe=${tf}`),
+                api.get(`/api/stocks/${symbol}/recommendation?timeframe=${tf}`),
+            ]);
+            setStockData(historyRes.data);
+            setRecommendation(recRes.data);
         } catch (error) {
             console.error(error);
             alert("Unable to fetch stock data.");
@@ -120,6 +124,8 @@ function App() {
                                 value={latest ? latest.volume.toLocaleString() : "--"}
                             />
                         </div>
+
+                        <RecommendationCard recommendation={recommendation} />
 
                         <CandlestickChart data={stockData} />
                         <VolumeChart data={stockData} />

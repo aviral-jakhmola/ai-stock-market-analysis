@@ -4,6 +4,8 @@ import pandas as pd
 from app.services.data_fetcher import fetch_stock_data
 from app.services.indicators import add_indicators
 from app.schemas.stock import StockHistory
+from app.services.recommendation import get_recommendation
+
 
 router = APIRouter(
     prefix="/api/stocks",
@@ -56,6 +58,33 @@ def get_history(ticker: str, timeframe: str = "1Y"):
         df = df.where(pd.notnull(df), None)
 
         return df.to_dict(orient="records")
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        print("ERROR:", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{ticker}/recommendation")
+def get_stock_recommendation(ticker: str, timeframe: str = "1Y"):
+    period_map = {
+        "1M": "1mo",
+        "3M": "3mo",
+        "6M": "6mo",
+        "1Y": "1y",
+        "5Y": "5y",
+    }
+
+    if timeframe not in period_map:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid timeframe '{timeframe}'. Must be one of {list(period_map.keys())}."
+        )
+
+    try:
+        df = fetch_stock_data(ticker=ticker, period=period_map[timeframe])
+        df = add_indicators(df)
+        return get_recommendation(df)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
