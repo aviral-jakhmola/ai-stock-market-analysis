@@ -5,3 +5,8 @@ const api = axios.create({
 });
 
 export default api;
+
+export async function fetchCompanyOverview(ticker) {
+    const response = await api.get(`/api/stocks/company/${ticker}`);
+    return response.data;
+}

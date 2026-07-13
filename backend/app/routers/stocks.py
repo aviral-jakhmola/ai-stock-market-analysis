@@ -3,8 +3,12 @@ import pandas as pd
 
 from app.services.data_fetcher import fetch_stock_data
 from app.services.indicators import add_indicators
-from app.schemas.stock import StockHistory
 from app.services.recommendation import get_recommendation
+
+from app.services.company_info import fetch_company_overview
+from app.schemas.stock import StockHistory, CompanyOverview
+
+
 
 
 router = APIRouter(
@@ -19,6 +23,14 @@ AVAILABLE_STOCKS = [
     "INFY.NS",
     "HDFCBANK.NS"
 ]
+
+
+@router.get("/company/{symbol}", response_model=CompanyOverview)
+def get_company_overview(symbol: str):
+    try:
+        return fetch_company_overview(symbol)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/search")

@@ -10,6 +10,8 @@ import api from "./services/api";
 import RSIChart from "./components/RSIChart";
 import MACDChart from "./components/MACDChart";
 import RecommendationCard from "./components/RecommendationCard";
+import CompanyOverview from "./components/CompanyOverview";
+
 
 const TIMEFRAMES = ["1M", "3M", "6M", "1Y", "5Y"];
 
@@ -25,23 +27,27 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [ticker, setTicker] = useState(null);
     const [timeframe, setTimeframe] = useState("1Y");
-
+    const [companyData, setCompanyData] = useState(null);
+    
     const fetchStock = async (symbol, tf) => {
-        setLoading(true);
-        try {
-            const [historyRes, recRes] = await Promise.all([
-                api.get(`/api/stocks/${symbol}/history?timeframe=${tf}`),
-                api.get(`/api/stocks/${symbol}/recommendation?timeframe=${tf}`),
-            ]);
-            setStockData(historyRes.data);
-            setRecommendation(recRes.data);
-        } catch (error) {
-            console.error(error);
-            alert("Unable to fetch stock data.");
-        } finally {
-            setLoading(false);
-        }
-    };
+    setLoading(true);
+    try {
+        const [historyRes, recRes, companyRes] = await Promise.all([
+            api.get(`/api/stocks/${symbol}/history?timeframe=${tf}`),
+            api.get(`/api/stocks/${symbol}/recommendation?timeframe=${tf}`),
+            api.get(`/api/stocks/company/${symbol}`),
+        ]);
+        setStockData(historyRes.data);
+        setRecommendation(recRes.data);
+        setCompanyData(companyRes.data);
+    } catch (error) {
+        console.error(error);
+        alert("Unable to fetch stock data.");
+    } finally {
+        setLoading(false);
+    }
+};
+
 
     const searchStock = (symbol) => {
         setTicker(symbol);
@@ -126,6 +132,8 @@ function App() {
                         </div>
 
                         <RecommendationCard recommendation={recommendation} />
+
+                        <CompanyOverview data={companyData} />
 
                         <CandlestickChart data={stockData} />
                         <VolumeChart data={stockData} />
