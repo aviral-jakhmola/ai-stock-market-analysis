@@ -11,7 +11,7 @@ import RSIChart from "./components/RSIChart";
 import MACDChart from "./components/MACDChart";
 import RecommendationCard from "./components/RecommendationCard";
 import CompanyOverview from "./components/CompanyOverview";
-
+import SentimentCard from "./components/SentimentCard";
 
 const TIMEFRAMES = ["1M", "3M", "6M", "1Y", "5Y"];
 
@@ -28,26 +28,28 @@ function App() {
     const [ticker, setTicker] = useState(null);
     const [timeframe, setTimeframe] = useState("1Y");
     const [companyData, setCompanyData] = useState(null);
-    
-    const fetchStock = async (symbol, tf) => {
-    setLoading(true);
-    try {
-        const [historyRes, recRes, companyRes] = await Promise.all([
-            api.get(`/api/stocks/${symbol}/history?timeframe=${tf}`),
-            api.get(`/api/stocks/${symbol}/recommendation?timeframe=${tf}`),
-            api.get(`/api/stocks/company/${symbol}`),
-        ]);
-        setStockData(historyRes.data);
-        setRecommendation(recRes.data);
-        setCompanyData(companyRes.data);
-    } catch (error) {
-        console.error(error);
-        alert("Unable to fetch stock data.");
-    } finally {
-        setLoading(false);
-    }
-};
+    const [sentiment, setSentiment] = useState(null);
 
+    const fetchStock = async (symbol, tf) => {
+        setLoading(true);
+        try {
+            const [historyRes, recRes, companyRes, sentimentRes] = await Promise.all([
+                api.get(`/api/stocks/${symbol}/history?timeframe=${tf}`),
+                api.get(`/api/stocks/${symbol}/recommendation?timeframe=${tf}`),
+                api.get(`/api/stocks/company/${symbol}`),
+                api.get(`/api/stocks/${symbol}/sentiment`),
+            ]);
+            setStockData(historyRes.data);
+            setRecommendation(recRes.data);
+            setCompanyData(companyRes.data);
+            setSentiment(sentimentRes.data);
+        } catch (error) {
+            console.error(error);
+            alert("Unable to fetch stock data.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const searchStock = (symbol) => {
         setTicker(symbol);
@@ -59,7 +61,6 @@ function App() {
         if (ticker) fetchStock(ticker, tf);
     };
 
-    // Grab the most recent record for the summary cards
     const latest = stockData.length > 0
         ? stockData[stockData.length - 1]
         : null;
@@ -88,7 +89,6 @@ function App() {
                     <LoadingSpinner />
                 ) : (
                     <>
-                        {/* Timeframe buttons */}
                         <div className="flex gap-2 mt-5 flex-wrap">
                             {TIMEFRAMES.map((tf) => (
                                 <button
@@ -108,7 +108,6 @@ function App() {
                             ))}
                         </div>
 
-                        {/* Dashboard cards */}
                         <div className="flex flex-wrap gap-4 mt-5">
                             <DashboardCard
                                 title="Current Price"
@@ -134,6 +133,8 @@ function App() {
                         <RecommendationCard recommendation={recommendation} />
 
                         <CompanyOverview data={companyData} />
+
+                        <SentimentCard data={sentiment} />
 
                         <CandlestickChart data={stockData} />
                         <VolumeChart data={stockData} />

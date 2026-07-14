@@ -8,6 +8,8 @@ from app.services.recommendation import get_recommendation
 from app.services.company_info import fetch_company_overview
 from app.schemas.stock import StockHistory, CompanyOverview
 
+from app.services.sentiment import analyze_ticker_sentiment
+from app.schemas.stock import StockHistory, CompanyOverview, SentimentSummary
 
 
 
@@ -17,11 +19,39 @@ router = APIRouter(
 )
 
 AVAILABLE_STOCKS = [
+    # Indian large-caps (NSE)
     "RELIANCE.NS",
     "TCS.NS",
-    "AAPL",
     "INFY.NS",
-    "HDFCBANK.NS"
+    "HDFCBANK.NS",
+    "ICICIBANK.NS",
+    "SBIN.NS",
+    "TATAMOTORS.NS",
+    "TATASTEEL.NS",
+    "WIPRO.NS",
+    "ITC.NS",
+    "BHARTIARTL.NS",
+    "KOTAKBANK.NS",
+    "LT.NS",
+    "AXISBANK.NS",
+    "MARUTI.NS",
+    "SUNPHARMA.NS",
+    "ASIANPAINT.NS",
+    "HCLTECH.NS",
+    "BAJFINANCE.NS",
+    "ADANIENT.NS",
+
+    # US large-caps
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "AMZN",
+    "TSLA",
+    "META",
+    "NVDA",
+    "NFLX",
+    "JPM",
+    "V",
 ]
 
 
@@ -40,11 +70,7 @@ def search_stock(q: str):
         for stock in AVAILABLE_STOCKS
         if q.upper() in stock
     ]
-
-    return {
-        "query": q,
-        "results": results
-    }
+    return {"query": q, "results": results}
 
 
 @router.get("/{ticker}/history", response_model=list[StockHistory])
@@ -99,6 +125,14 @@ def get_stock_recommendation(ticker: str, timeframe: str = "1Y"):
         return get_recommendation(df)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        print("ERROR:", e)
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/{ticker}/sentiment", response_model=SentimentSummary)
+def get_stock_sentiment(ticker: str, limit: int = 10):
+    try:
+        return analyze_ticker_sentiment(ticker, limit=limit)
     except Exception as e:
         print("ERROR:", e)
         raise HTTPException(status_code=500, detail=str(e))

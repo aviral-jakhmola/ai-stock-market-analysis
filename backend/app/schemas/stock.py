@@ -35,3 +35,17 @@ class CompanyOverview(BaseModel):
     dividend_yield: Optional[float] = None
     beta: Optional[float] = None
     currency: Optional[str] = None
+
+class NewsArticleSentiment(BaseModel):
+    title: Optional[str] = None
+    publisher: Optional[str] = None
+    link: Optional[str] = None
+    published: Optional[str] = None
+    sentiment: dict
+
+
+class SentimentSummary(BaseModel):
+    ticker: str
+    articles: list[NewsArticleSentiment]
+    summary: dict
+    overall_sentiment: str

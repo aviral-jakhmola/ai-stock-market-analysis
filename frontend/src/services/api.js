@@ -10,3 +10,8 @@ export async function fetchCompanyOverview(ticker) {
     const response = await api.get(`/api/stocks/company/${ticker}`);
     return response.data;
 }
+
+export async function fetchSentiment(ticker) {
+    const response = await api.get(`/api/stocks/${ticker}/sentiment`);
+    return response.data;
+}
