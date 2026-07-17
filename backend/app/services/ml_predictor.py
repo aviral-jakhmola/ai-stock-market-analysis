@@ -13,6 +13,57 @@ FEATURE_COLUMNS = [
     "bb_middle", "bb_upper", "bb_lower",
 ]
 
+from xgboost import XGBClassifier
+from sklearn.metrics import accuracy_score
+
+
+def prepare_classification_dataset(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Same feature setup as regression, but the target becomes binary:
+    1 if tomorrow's close is higher than today's, else 0.
+    """
+    df = df.copy()
+    next_close = df["close"].shift(-1)
+    df["target"] = (next_close > df["close"]).astype(int)
+    df = df.dropna()
+    return df
+
+
+def train_xgboost_classifier(train_df: pd.DataFrame):
+    X_train = train_df[FEATURE_COLUMNS]
+    y_train = train_df["target"]
+
+    model = XGBClassifier(
+        n_estimators=200,
+        max_depth=4,
+        learning_rate=0.05,
+        random_state=42,
+    )
+    model.fit(X_train, y_train)
+    return model
+
+
+def evaluate_classifier(model, test_df: pd.DataFrame) -> dict:
+    X_test = test_df[FEATURE_COLUMNS]
+    y_test = test_df["target"]
+
+    predictions = model.predict(X_test)
+    accuracy = accuracy_score(y_test, predictions)
+
+    return {"accuracy": round(accuracy, 4)}
+
+
+def naive_classification_baseline(train_df: pd.DataFrame, test_df: pd.DataFrame) -> dict:
+    """
+    Fair baseline: always predict whichever class was more common in TRAINING data.
+    (Using train, not test, to decide the majority class — using test data here
+    would itself be a form of peeking at the answer key.)
+    """
+    majority_class = train_df["target"].mode()[0]
+    naive_predictions = [majority_class] * len(test_df)
+    accuracy = accuracy_score(test_df["target"], naive_predictions)
+    return {"accuracy": round(accuracy, 4), "majority_class": int(majority_class)}
+
 
 def prepare_dataset(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -109,25 +160,21 @@ def evaluate_model(model, test_df: pd.DataFrame) -> dict:
 
 
 if __name__ == "__main__":
-    df = fetch_stock_data(ticker="RELIANCE.NS", period="5y")
-    df = add_indicators(df)
-    df = prepare_dataset(df)
+    # --- Classification experiment ---
+    df_clf = fetch_stock_data(ticker="RELIANCE.NS", period="5y")
+    df_clf = add_indicators(df_clf)
+    df_clf = prepare_classification_dataset(df_clf)
 
-    print(f"Total usable rows: {len(df)}")
+    train_clf, test_clf = train_test_split_chronological(df_clf)
 
-    train_df, test_df = train_test_split_chronological(df)
-    print(f"Train rows: {len(train_df)}, Test rows: {len(test_df)}")
+    naive_clf = naive_classification_baseline(train_clf, test_clf)
+    print(f"\nNaive classification baseline (always predict {'UP' if naive_clf['majority_class'] == 1 else 'DOWN'}):")
+    print(f"  Accuracy: {naive_clf['accuracy']}")
 
-    baseline = naive_baseline_error(test_df)
-    print("\nNaive baseline (guess tomorrow = today):")
-    print(f"  MAE:  ₹{baseline['mae']}")
-    print(f"  RMSE: ₹{baseline['rmse']}")
+    clf_model = train_xgboost_classifier(train_clf)
+    clf_result = evaluate_classifier(clf_model, test_clf)
+    print(f"\nXGBoost Classifier:")
+    print(f"  Accuracy: {clf_result['accuracy']}")
 
-    model = train_xgboost_model(train_df)
-    xgb_result = evaluate_model(model, test_df)
-    print("\nXGBoost model:")
-    print(f"  MAE:  ₹{xgb_result['mae']}")
-    print(f"  RMSE: ₹{xgb_result['rmse']}")
-
-    improvement = ((baseline["mae"] - xgb_result["mae"]) / baseline["mae"]) * 100
-    print(f"\nMAE improvement over baseline: {improvement:.1f}%")
+    clf_improvement = ((clf_result["accuracy"] - naive_clf["accuracy"]) / naive_clf["accuracy"]) * 100
+    print(f"Accuracy improvement over baseline: {clf_improvement:.1f}%")
