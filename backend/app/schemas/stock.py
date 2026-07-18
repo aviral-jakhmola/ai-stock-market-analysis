@@ -49,3 +49,10 @@ class SentimentSummary(BaseModel):
     articles: list[NewsArticleSentiment]
     summary: dict
     overall_sentiment: str
+
+class DirectionPrediction(BaseModel):
+    ticker: str
+    direction: str
+    probability_up: float
+    probability_down: float
+    model_accuracy_on_test_set: float

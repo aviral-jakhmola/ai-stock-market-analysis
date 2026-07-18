@@ -89,7 +89,7 @@ function RecommendationCard({ recommendation }) {
         <div className={`border border-gray-200 dark:border-gray-700 border-l-4 ${theme.border} bg-white dark:bg-gray-800 mt-5 p-5 rounded-xl`}>
             <div className="flex items-center justify-between mb-1">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    AI Recommendation
+                    Rule-Based Recommendation
                 </h2>
                 <span className={`px-4 py-1.5 rounded-full font-bold text-lg tracking-wide ${theme.badge}`}>
                     {rec}

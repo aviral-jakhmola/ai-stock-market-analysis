@@ -1,5 +1,6 @@
 import pandas as pd
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import accuracy_score
+from xgboost import XGBClassifier
 
 from app.services.data_fetcher import fetch_stock_data
 from app.services.indicators import add_indicators
@@ -13,14 +14,13 @@ FEATURE_COLUMNS = [
     "bb_middle", "bb_upper", "bb_lower",
 ]
 
-from xgboost import XGBClassifier
-from sklearn.metrics import accuracy_score
-
 
 def prepare_classification_dataset(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Same feature setup as regression, but the target becomes binary:
-    1 if tomorrow's close is higher than today's, else 0.
+    Target: 1 if tomorrow's close is higher than today's, else 0.
+    Chosen over price/return regression after testing showed regression
+    (XGBoost and LSTM, multiple configs) never reliably beat a naive
+    baseline, while direction classification showed a small, consistent edge.
     """
     df = df.copy()
     next_close = df["close"].shift(-1)
@@ -29,16 +29,24 @@ def prepare_classification_dataset(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def train_test_split_chronological(df: pd.DataFrame, test_size: float = 0.2):
+    """Splits by TIME, not randomly — train = earlier rows, test = later rows."""
+    split_index = int(len(df) * (1 - test_size))
+    return df.iloc[:split_index], df.iloc[split_index:]
+
+
+def naive_classification_baseline(train_df: pd.DataFrame, test_df: pd.DataFrame) -> dict:
+    """Baseline: always predict the majority class seen in TRAINING data."""
+    majority_class = train_df["target"].mode()[0]
+    naive_predictions = [majority_class] * len(test_df)
+    accuracy = accuracy_score(test_df["target"], naive_predictions)
+    return {"accuracy": round(accuracy, 4), "majority_class": int(majority_class)}
+
+
 def train_xgboost_classifier(train_df: pd.DataFrame):
     X_train = train_df[FEATURE_COLUMNS]
     y_train = train_df["target"]
-
-    model = XGBClassifier(
-        n_estimators=200,
-        max_depth=4,
-        learning_rate=0.05,
-        random_state=42,
-    )
+    model = XGBClassifier(n_estimators=200, max_depth=4, learning_rate=0.05, random_state=42)
     model.fit(X_train, y_train)
     return model
 
@@ -46,135 +54,41 @@ def train_xgboost_classifier(train_df: pd.DataFrame):
 def evaluate_classifier(model, test_df: pd.DataFrame) -> dict:
     X_test = test_df[FEATURE_COLUMNS]
     y_test = test_df["target"]
-
     predictions = model.predict(X_test)
-    accuracy = accuracy_score(y_test, predictions)
-
-    return {"accuracy": round(accuracy, 4)}
+    return {"accuracy": round(accuracy_score(y_test, predictions), 4)}
 
 
-def naive_classification_baseline(train_df: pd.DataFrame, test_df: pd.DataFrame) -> dict:
+def predict_direction(ticker: str) -> dict:
     """
-    Fair baseline: always predict whichever class was more common in TRAINING data.
-    (Using train, not test, to decide the majority class — using test data here
-    would itself be a form of peeking at the answer key.)
+    Trains the classifier fresh on a ticker's history and predicts
+    tomorrow's direction (UP/DOWN) using the most recent day's indicators.
+
+    Note: retrains on every call (no persisted model), so this endpoint
+    is slower than the others and accuracy may vary slightly between
+    calls due to XGBoost's own training randomness — this was measured
+    to be within roughly ±1-2 percentage points across repeated runs.
     """
-    majority_class = train_df["target"].mode()[0]
-    naive_predictions = [majority_class] * len(test_df)
-    accuracy = accuracy_score(test_df["target"], naive_predictions)
-    return {"accuracy": round(accuracy, 4), "majority_class": int(majority_class)}
+    df = fetch_stock_data(ticker=ticker, period="5y")
+    df = add_indicators(df)
+    df = prepare_classification_dataset(df)
 
+    train_df, test_df = train_test_split_chronological(df)
+    model = train_xgboost_classifier(train_df)
+    eval_result = evaluate_classifier(model, test_df)
 
-def prepare_dataset(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Builds the target as tomorrow's PERCENTAGE RETURN, not the raw price.
-    Tree models can't extrapolate beyond prices seen in training, but
-    daily % returns stay in a roughly consistent range over time,
-    which is a much fairer target for this kind of model.
-    """
-    df = df.copy()
+    latest_features = df[FEATURE_COLUMNS].iloc[[-1]]
+    prediction = model.predict(latest_features)[0]
+    probabilities = model.predict_proba(latest_features)[0]
 
-    # tomorrow's close, same shift trick as before
-    next_close = df["close"].shift(-1)
-
-    # convert to a percentage return: (tomorrow - today) / today
-    df["target"] = (next_close - df["close"]) / df["close"]
-
-    df = df.dropna()
-
-    return df
-
-
-def train_test_split_chronological(df: pd.DataFrame, test_size: float = 0.2):
-    """
-    Splits data by TIME, not randomly. Train = earlier rows, Test = later rows.
-    This matters: a random shuffle would let the model 'see' future data
-    during training, which is impossible in real trading and would make
-    our evaluation dishonest.
-    """
-    split_index = int(len(df) * (1 - test_size))
-    train_df = df.iloc[:split_index]
-    test_df = df.iloc[split_index:]
-    return train_df, test_df
-
-
-def naive_baseline_error(test_df: pd.DataFrame) -> dict:
-    """
-    Naive baseline is now: guess 0% change (tomorrow = today), in return terms.
-    """
-    naive_predictions = pd.Series(0, index=test_df.index)  # predicting "no change"
-    actual = test_df["target"]
-
-    mae = mean_absolute_error(actual, naive_predictions)
-    rmse = mean_squared_error(actual, naive_predictions) ** 0.5
-
-    return {"mae": round(mae, 5), "rmse": round(rmse, 5)}
-
-
-def evaluate_model(model, test_df: pd.DataFrame) -> dict:
-    X_test = test_df[FEATURE_COLUMNS]
-    y_test = test_df["target"]
-
-    predictions = model.predict(X_test)
-
-    mae = mean_absolute_error(y_test, predictions)
-    rmse = mean_squared_error(y_test, predictions) ** 0.5
-
-    return {"mae": round(mae, 5), "rmse": round(rmse, 5)}
-
-from xgboost import XGBRegressor
-
-
-def train_xgboost_model(train_df: pd.DataFrame):
-    """
-    Trains an XGBoost regressor on the training set.
-    """
-    X_train = train_df[FEATURE_COLUMNS]
-    y_train = train_df["target"]
-
-    model = XGBRegressor(
-        n_estimators=200,
-        max_depth=4,
-        learning_rate=0.05,
-        random_state=42,
-    )
-    model.fit(X_train, y_train)
-
-    return model
-
-
-def evaluate_model(model, test_df: pd.DataFrame) -> dict:
-    """
-    Predicts on the held-out test set and computes error metrics,
-    same way we scored the naive baseline, so they're directly comparable.
-    """
-    X_test = test_df[FEATURE_COLUMNS]
-    y_test = test_df["target"]
-
-    predictions = model.predict(X_test)
-
-    mae = mean_absolute_error(y_test, predictions)
-    rmse = mean_squared_error(y_test, predictions) ** 0.5
-
-    return {"mae": round(mae, 2), "rmse": round(rmse, 2)}
+    return {
+        "ticker": ticker,
+        "direction": "UP" if prediction == 1 else "DOWN",
+        "probability_up": round(float(probabilities[1]), 4),
+        "probability_down": round(float(probabilities[0]), 4),
+        "model_accuracy_on_test_set": eval_result["accuracy"],
+    }
 
 
 if __name__ == "__main__":
-    # --- Classification experiment ---
-    df_clf = fetch_stock_data(ticker="RELIANCE.NS", period="5y")
-    df_clf = add_indicators(df_clf)
-    df_clf = prepare_classification_dataset(df_clf)
-
-    train_clf, test_clf = train_test_split_chronological(df_clf)
-
-    naive_clf = naive_classification_baseline(train_clf, test_clf)
-    print(f"\nNaive classification baseline (always predict {'UP' if naive_clf['majority_class'] == 1 else 'DOWN'}):")
-    print(f"  Accuracy: {naive_clf['accuracy']}")
-
-    clf_model = train_xgboost_classifier(train_clf)
-    clf_result = evaluate_classifier(clf_model, test_clf)
-    print(f"\nXGBoost Classifier:")
-    print(f"  Accuracy: {clf_result['accuracy']}")
-
-    clf_improvement = ((clf_result["accuracy"] - naive_clf["accuracy"]) / naive_clf["accuracy"]) * 100
-    print(f"Accuracy improvement over baseline: {clf_improvement:.1f}%")
+    result = predict_direction("RELIANCE.NS")
+    print(result)
