@@ -42,7 +42,7 @@ function CompanyOverview({ data }) {
     ];
 
     return (
-        <div className="mt-6 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-5">
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-5">
 
             {/* Header */}
             <div className="mb-5">

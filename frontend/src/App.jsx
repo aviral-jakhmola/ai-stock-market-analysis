@@ -13,8 +13,14 @@ import RecommendationCard from "./components/RecommendationCard";
 import CompanyOverview from "./components/CompanyOverview";
 import SentimentCard from "./components/SentimentCard";
 import PredictionCard from "./components/PredictionCard";
+import FinalRecommendationCard from "./components/FinalRecommendationCard";
+import MarketStatusCard from "./components/MarketStatusCard";
+
 
 const TIMEFRAMES = ["1M", "3M", "6M", "1Y", "5Y"];
+
+
+
 
 const formatINR = (value) =>
     `₹${value.toLocaleString("en-IN", {
@@ -33,32 +39,37 @@ function App() {
     const [prediction, setPrediction] = useState(null);
 
     const fetchStock = async (symbol, tf) => {
-        setLoading(true);
-        try {
-            const [historyRes, recRes, companyRes, sentimentRes, predictionRes] = await Promise.all([
-                api.get(`/api/stocks/${symbol}/history?timeframe=${tf}`),
-                api.get(`/api/stocks/${symbol}/recommendation?timeframe=${tf}`),
-                api.get(`/api/stocks/company/${symbol}`),
-                api.get(`/api/stocks/${symbol}/sentiment`),
-                api.get(`/api/stocks/${symbol}/predict`),
-            ]);
-            setStockData(historyRes.data);
-            setRecommendation(recRes.data);
-            setCompanyData(companyRes.data);
-            setSentiment(sentimentRes.data);
-            setPrediction(predictionRes.data);
-        } catch (error) {
-            console.error(error);
-            alert("Unable to fetch stock data.");
-        } finally {
-            setLoading(false);
-        }
-    };
+    setLoading(true);
+    try {
+        const [historyRes, recRes, companyRes, sentimentRes, predictionRes, finalRecRes] = await Promise.all([
+            api.get(`/api/stocks/${symbol}/history?timeframe=${tf}`),
+            api.get(`/api/stocks/${symbol}/recommendation?timeframe=${tf}`),
+            api.get(`/api/stocks/company/${symbol}`),
+            api.get(`/api/stocks/${symbol}/sentiment`),
+            api.get(`/api/stocks/${symbol}/predict`),
+            api.get(`/api/stocks/${symbol}/final-recommendation?timeframe=${tf}`),
+        ]);
+        setStockData(historyRes.data);
+        setRecommendation(recRes.data);
+        setCompanyData(companyRes.data);
+        setSentiment(sentimentRes.data);
+        setPrediction(predictionRes.data);
+        setFinalRecommendation(finalRecRes.data);
+    } catch (error) {
+        console.error(error);
+        alert("Unable to fetch stock data.");
+    } finally {
+        setLoading(false);
+    }
+};
 
     const searchStock = (symbol) => {
         setTicker(symbol);
         fetchStock(symbol, timeframe);
     };
+
+    const [finalRecommendation, setFinalRecommendation] = useState(null);
+
 
     const changeTimeframe = (tf) => {
         setTimeframe(tf);
@@ -80,6 +91,7 @@ function App() {
             ? "down"
             : "neutral"
         : "neutral";
+    
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
@@ -90,35 +102,37 @@ function App() {
                 {/* Unified Query & Scope Controls Section */}
                 <div className="flex flex-col lg:flex-row gap-6 items-start mb-6">
                     
-                    {/* Left Stack: Search Field Container + Bold Timeframe Selectors */}
                     <div className="flex flex-col gap-3 w-full lg:w-96 shrink-0">
-                        <SearchBar onSearch={searchStock} />
-                        
-                        {/* Upsized & expanded Segmented Tab Bar strip */}
-                        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700 w-full">
-                            {TIMEFRAMES.map((tf) => (
-                                <button
-                                    key={tf}
-                                    onClick={() => changeTimeframe(tf)}
-                                    disabled={!ticker || loading}
-                                    className={`flex-1 text-center px-4 py-2 rounded-lg text-sm font-semibold transition-all
-                                        disabled:opacity-40 disabled:cursor-not-allowed
-                                        ${
-                                            timeframe === tf
-                                                ? "bg-blue-600 text-white shadow-md shadow-blue-500/10"
-                                                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white dark:hover:bg-gray-700/50"
-                                        }`}
-                                >
-                                    {tf}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+    <SearchBar onSearch={searchStock} />
+    
+    <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700 w-full">
+        {TIMEFRAMES.map((tf) => (
+            <button
+                key={tf}
+                onClick={() => changeTimeframe(tf)}
+                disabled={!ticker || loading}
+                className={`flex-1 text-center px-4 py-2 rounded-lg text-sm font-semibold transition-all
+                    disabled:opacity-40 disabled:cursor-not-allowed
+                    ${
+                        timeframe === tf
+                            ? "bg-blue-600 text-white shadow-md shadow-blue-500/10"
+                            : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white dark:hover:bg-gray-700/50"
+                    }`}
+            >
+                {tf}
+            </button>
+        ))}
+    </div>
 
-                    {/* Right Stack: ML Direction Prediction Module */}
-                    <div className="flex-1 w-full">
-                        <PredictionCard data={prediction} />
-                    </div>
+    <MarketStatusCard ticker={ticker} />
+</div>
+                
+                {/* Right Stack: Company Overview */}
+<div className="flex-1 w-full">
+    <CompanyOverview data={companyData} />
+</div>
+
+                    
                 </div>
 
                 {/* Main Dynamic Workspace Section */}
@@ -151,10 +165,13 @@ function App() {
                             />
                         </div>
 
-                        {/* Analysis Insight Deliverables */}
-                        <RecommendationCard recommendation={recommendation} />
-                        <CompanyOverview data={companyData} />
-                        <SentimentCard data={sentiment} />
+                       {/* Analysis Insight Deliverables */}
+                        <FinalRecommendationCard
+                        data={finalRecommendation}
+                        recommendation={recommendation}
+                        prediction={prediction}
+                        sentiment={sentiment}
+                        />
 
                         {/* Interactive Visualizations Block */}
                         <div className="flex flex-col gap-6 mt-6">

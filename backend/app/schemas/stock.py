@@ -56,3 +56,20 @@ class DirectionPrediction(BaseModel):
     probability_up: float
     probability_down: float
     model_accuracy_on_test_set: float
+
+class SignalBreakdownItem(BaseModel):
+    vote: str
+    weight: int
+    detail: Optional[str] = None
+    backtested: Optional[dict] = None
+    model_accuracy: Optional[float] = None
+
+
+class FinalRecommendation(BaseModel):
+    ticker: str
+    final_recommendation: str
+    note: str
+    breakdown: dict
+    weighted_bullish: int
+    weighted_bearish: int
+    total_weight: int

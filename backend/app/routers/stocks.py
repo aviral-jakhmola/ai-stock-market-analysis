@@ -14,6 +14,8 @@ from app.schemas.stock import StockHistory, CompanyOverview, SentimentSummary
 from app.services.ml_predictor import predict_direction
 from app.schemas.stock import StockHistory, CompanyOverview, SentimentSummary, DirectionPrediction
 
+from app.services.ensemble import get_final_recommendation
+from app.schemas.stock import StockHistory, CompanyOverview, SentimentSummary, DirectionPrediction, FinalRecommendation
 
 router = APIRouter(
     prefix="/api/stocks",
@@ -143,6 +145,14 @@ def get_stock_sentiment(ticker: str, limit: int = 10):
 def get_direction_prediction(ticker: str):
     try:
         return predict_direction(ticker)
+    except Exception as e:
+        print("ERROR:", e)
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/{ticker}/final-recommendation", response_model=FinalRecommendation)
+def get_final_stock_recommendation(ticker: str, timeframe: str = "1Y"):
+    try:
+        return get_final_recommendation(ticker, timeframe=timeframe)
     except Exception as e:
         print("ERROR:", e)
         raise HTTPException(status_code=500, detail=str(e))
