@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import ProtectedRoute from "./components/ProtectedRoute";
+import WatchlistButton from "./components/WatchlistButton";
 
 function App() {
     return (
@@ -22,5 +23,6 @@ function App() {
         </Routes>
     );
 }
+
 
 export default App;

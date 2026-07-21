@@ -3,6 +3,9 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
+
+
+
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -25,6 +28,9 @@ def get_db():
         db.close()
 
 from app.models.user import User
+
+from app.models.user import User
+from app.models.watchlist import Watchlist
 
 def init_db():
     Base.metadata.create_all(bind=engine)

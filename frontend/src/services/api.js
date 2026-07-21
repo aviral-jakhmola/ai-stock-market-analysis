@@ -37,3 +37,18 @@ export async function fetchSentiment(ticker) {
     const response = await api.get(`/api/stocks/${ticker}/sentiment`);
     return response.data;
 }
+
+export async function getWatchlist() {
+    const response = await api.get("/api/watchlist");
+    return response.data;
+}
+
+export async function addToWatchlist(ticker) {
+    const response = await api.post("/api/watchlist", { ticker });
+    return response.data;
+}
+
+export async function removeFromWatchlist(itemId) {
+    const response = await api.delete(`/api/watchlist/${itemId}`);
+    return response.data;
+}

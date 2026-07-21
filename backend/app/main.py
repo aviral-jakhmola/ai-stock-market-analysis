@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth as auth_router
 
 from app.routers import stocks
+from app.routers import watchlist as watchlist_router
 
 app = FastAPI(
     title="AI Stock Market API",
@@ -21,6 +22,8 @@ app.add_middleware(
 app.include_router(stocks.router)
 
 app.include_router(auth_router.router)
+
+app.include_router(watchlist_router.router)
 
 @app.get("/")
 def root():

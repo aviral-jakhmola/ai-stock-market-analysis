@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import SearchBar from "../components/SearchBar";
 import DashboardCard from "../components/DashboardCard";
@@ -9,12 +9,11 @@ import StockData from "../components/StockData";
 import api from "../services/api";
 import RSIChart from "../components/RSIChart";
 import MACDChart from "../components/MACDChart";
-import RecommendationCard from "../components/RecommendationCard";
 import CompanyOverview from "../components/CompanyOverview";
-import SentimentCard from "../components/SentimentCard";
-import PredictionCard from "../components/PredictionCard";
 import FinalRecommendationCard from "../components/FinalRecommendationCard";
 import MarketStatusCard from "../components/MarketStatusCard";
+import WatchlistButton from "../components/WatchlistButton";
+import { useLocation } from "react-router-dom";
 
 const TIMEFRAMES = ["1M", "3M", "6M", "1Y", "5Y"];
 
@@ -23,6 +22,8 @@ const formatINR = (value) =>
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     })}`;
+
+
 
 function Dashboard() {
     const [stockData, setStockData] = useState([]);
@@ -34,6 +35,20 @@ function Dashboard() {
     const [sentiment, setSentiment] = useState(null);
     const [prediction, setPrediction] = useState(null);
     const [finalRecommendation, setFinalRecommendation] = useState(null);
+
+    const location = useLocation();
+
+    useEffect(() => {
+        const incomingTicker = location.state?.ticker;
+        if (incomingTicker) {
+            searchStock(incomingTicker);
+        }
+    }, [location.state]);
+
+    
+
+
+    
 
     const fetchStock = async (symbol, tf) => {
         setLoading(true);
@@ -73,6 +88,8 @@ function Dashboard() {
     const latest = stockData.length > 0 ? stockData[stockData.length - 1] : null;
     const previous = stockData.length > 1 ? stockData[stockData.length - 2] : null;
 
+    
+
     const trend = latest && previous
         ? latest.close > previous.close
             ? "up"
@@ -81,6 +98,8 @@ function Dashboard() {
             : "neutral"
         : "neutral";
 
+    
+
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
             <Navbar />
@@ -88,7 +107,15 @@ function Dashboard() {
             <div className="px-4 sm:px-6 lg:px-8 py-5 max-w-7xl mx-auto">
                 <div className="flex flex-col lg:flex-row gap-6 items-start mb-6">
                     <div className="flex flex-col gap-3 w-full lg:w-96 shrink-0">
-                        <SearchBar onSearch={searchStock} />
+                        <div className="flex items-center gap-2">
+                            <div className="flex-1">
+                                <SearchBar onSearch={searchStock} />
+                            </div>
+                            <div className="mt-4">
+                                <WatchlistButton ticker={ticker} />
+                            </div>
+
+                        </div>
 
                         <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700 w-full">
                             {TIMEFRAMES.map((tf) => (
