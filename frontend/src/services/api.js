@@ -52,3 +52,8 @@ export async function removeFromWatchlist(itemId) {
     const response = await api.delete(`/api/watchlist/${itemId}`);
     return response.data;
 }
+
+export const getSearchHistory = async () => {
+    const response = await api.get("/api/search-history");
+    return response.data;
+};

@@ -2,19 +2,30 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Star, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { getWatchlist, removeFromWatchlist } from "../services/api";
+import {
+    getWatchlist,
+    removeFromWatchlist,
+    getSearchHistory,
+} from "../services/api";
 
 function Profile() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [watchlist, setWatchlist] = useState([]);
     const [loadingWatchlist, setLoadingWatchlist] = useState(true);
+    const [searchHistory, setSearchHistory] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(true);
 
     useEffect(() => {
         getWatchlist()
             .then(setWatchlist)
             .catch((err) => console.error("Failed to load watchlist", err))
             .finally(() => setLoadingWatchlist(false));
+        
+        getSearchHistory()
+    .then(setSearchHistory)
+    .catch((err) => console.error("Failed to load search history", err))
+    .finally(() => setLoadingHistory(false));
     }, []);
 
     const handleLogout = () => {
@@ -128,8 +139,55 @@ function Profile() {
                     )}
                 </div>
 
-            </div>
+
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md p-8">
+    <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+        Recently Searched
+    </h2>
+
+    {loadingHistory ? (
+        <p className="text-sm text-gray-400 dark:text-gray-500">
+            Loading...
+        </p>
+    ) : searchHistory.length === 0 ? (
+        <p className="text-sm text-gray-400 dark:text-gray-500">
+            No recent searches yet.
+        </p>
+    ) : (
+        <div className="flex flex-col gap-2">
+            {searchHistory.map((item) => (
+                <button
+                    key={item.id}
+                    onClick={() =>
+                        navigate("/", {
+                            state: { ticker: item.ticker },
+                        })
+                    }
+                    className="flex justify-between items-center rounded-lg bg-gray-50 dark:bg-gray-900/40 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                >
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {item.ticker}
+                    </span>
+
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(item.searched_at).toLocaleString("en-IN")}
+                    </span>
+                </button>
+            ))}
         </div>
+    )}
+</div>
+
+
+                
+
+            </div>
+
+
+            
+        </div>
+
+        
     );
 }
 

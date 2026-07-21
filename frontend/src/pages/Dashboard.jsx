@@ -67,18 +67,37 @@ function Dashboard() {
             setSentiment(sentimentRes.data);
             setPrediction(predictionRes.data);
             setFinalRecommendation(finalRecRes.data);
+            return true;
         } catch (error) {
-            console.error(error);
-            alert("Unable to fetch stock data.");
-        } finally {
+    console.error(error);
+    alert("Unable to fetch stock data.");
+    return false;
+}
+ finally {
             setLoading(false);
         }
     };
 
-    const searchStock = (symbol) => {
-        setTicker(symbol);
-        fetchStock(symbol, timeframe);
-    };
+    const searchStock = async (symbol) => {
+    setTicker(symbol);
+
+    const success = await fetchStock(symbol, timeframe);
+
+    if (!success) return;
+
+    // Only save search history for logged-in users
+    const token = localStorage.getItem("token");
+
+    if (!token) return;
+
+    try {
+        await api.post("/api/search-history", {
+            ticker: symbol,
+        });
+    } catch (error) {
+        console.error("Failed to save search history:", error);
+    }
+};
 
     const changeTimeframe = (tf) => {
         setTimeframe(tf);
