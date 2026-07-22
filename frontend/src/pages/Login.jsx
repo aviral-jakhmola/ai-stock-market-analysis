@@ -45,10 +45,11 @@ function Login() {
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Username
                         </label>
                         <input
+                            id="username"
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
@@ -58,10 +59,11 @@ function Login() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Password
                         </label>
                         <input
+                            id="password"
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -71,12 +73,12 @@ function Login() {
                     </div>
 
                     <button
-                        type="submit"
-                        disabled={loading}
-                        className="mt-2 w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg px-4 py-2 text-sm transition-colors shadow-md shadow-blue-500/10"
-                    >
-                        {loading ? "Logging in..." : "Log in"}
-                    </button>
+    type="submit"
+    disabled={loading}
+    className="mt-2 w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg px-4 py-2 text-sm transition-colors shadow-md shadow-blue-500/10"
+>
+    {loading ? "Logging in..." : "Log in"}
+</button>
                 </form>
 
                 <p className="mt-6 text-sm text-gray-500 dark:text-gray-400 text-center">
