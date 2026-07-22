@@ -62,7 +62,7 @@ def get_search_history(
     return (
         db.query(SearchHistory)
         .filter(SearchHistory.user_id == current_user.id)
-        .order_by(SearchHistory.searched_at.desc())
+        .order_by(SearchHistory.searched_at.desc(), SearchHistory.id.desc())
         .limit(10)
         .all()
     )

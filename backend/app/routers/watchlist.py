@@ -22,7 +22,12 @@ def get_watchlist(
     """
     Returns the current user's full watchlist.
     """
-    return db.query(Watchlist).filter(Watchlist.user_id == current_user.id).all()
+    return (
+        db.query(Watchlist)
+        .filter(Watchlist.user_id == current_user.id)
+        .order_by(Watchlist.id.desc())
+        .all()
+    )
 
 
 @router.post("", response_model=WatchlistItem)
