@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+tests/
+data/
+.env
+.git/
+.gitignore
+requirements-dev.txt
+strip_dev_deps.py
+*.md

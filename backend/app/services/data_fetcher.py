@@ -9,9 +9,8 @@ import yfinance as yf
 # Configuration
 # ----------------------------
 
-DATA_FOLDER = "../data"
-
-os.makedirs(DATA_FOLDER, exist_ok=True)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_FOLDER = os.path.join(BASE_DIR, "..", "..", "data")
 
 
 # ----------------------------
@@ -103,6 +102,8 @@ def fetch_stock_data(
 # ----------------------------
 
 def save_csv(df: pd.DataFrame, ticker: str):
+
+    os.makedirs(DATA_FOLDER, exist_ok=True)
 
     filename = ticker.replace(".", "_") + ".csv"
 
