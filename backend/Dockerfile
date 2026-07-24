@@ -4,7 +4,8 @@ FROM python:3.13-slim AS base
 # show up immediately in `docker logs`, not just on container exit)
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    HF_HOME=/app/.cache/huggingface
 
 WORKDIR /app
 
@@ -14,6 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+RUN pip install --upgrade pip
+
 COPY requirements.txt .
 
 # torch is installed separately from the CPU-only wheel index — the default
@@ -22,6 +25,8 @@ COPY requirements.txt .
 RUN grep -v "^torch==" requirements.txt > requirements-notorch.txt \
     && pip install -r requirements-notorch.txt \
     && pip install $(grep "^torch==" requirements.txt) --index-url https://download.pytorch.org/whl/cpu
+
+RUN python -c "from transformers import pipeline; pipeline('sentiment-analysis', model='ProsusAI/finbert')"
 
 # Only copy what the app actually needs at runtime — not tests, not the venv,
 # not .env (secrets should never be baked into an image layer)
