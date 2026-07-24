@@ -36,6 +36,8 @@ def db_session():
         Base.metadata.drop_all(bind=engine)
 
 
+from unittest.mock import patch
+
 @pytest.fixture(scope="function")
 def client(db_session):
     """Unauthenticated TestClient with the real DB swapped for the test DB."""
@@ -47,10 +49,16 @@ def client(db_session):
             pass
 
     app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as c:
-        yield c
-    app.dependency_overrides.clear()
 
+    # Prevent the app's startup event (init_db) from touching the real
+    # production DATABASE_URL during tests — table creation is already
+    # handled by the db_session fixture against the in-memory SQLite engine.
+    with patch("app.main.init_db"):
+        with TestClient(app) as c:
+            yield c
+
+    app.dependency_overrides.clear()
+    
 
 @pytest.fixture(scope="function")
 def test_user_credentials():
