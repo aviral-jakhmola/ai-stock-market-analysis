@@ -1,11 +1,29 @@
 from transformers import pipeline
 from app.services.news_fetcher import fetch_news
 
-# Load FinBERT once, at import time, so it's not reloaded on every request
-_sentiment_pipeline = pipeline(
-    "sentiment-analysis",
-    model="ProsusAI/finbert",
-)
+# FinBERT is loaded lazily, on first actual use — not at import time.
+# Importing this module (which happens on every app boot, since routers
+# reference it) no longer forces ~500MB-1GB of model weights into memory
+# before anyone has made a single sentiment request. This matters most in
+# memory-constrained environments (e.g. Railway's 1GB container limit) —
+# search/technical/ML-only requests never touch this cost at all.
+_sentiment_pipeline = None
+
+
+def _get_sentiment_pipeline():
+    """
+    Returns the cached FinBERT pipeline, building it on first call.
+    Every call after the first returns the same in-memory instance —
+    same performance characteristic as the old module-level load,
+    just deferred until actually needed.
+    """
+    global _sentiment_pipeline
+    if _sentiment_pipeline is None:
+        _sentiment_pipeline = pipeline(
+            "sentiment-analysis",
+            model="ProsusAI/finbert",
+        )
+    return _sentiment_pipeline
 
 
 def analyze_sentiment(text: str) -> dict:
@@ -13,7 +31,8 @@ def analyze_sentiment(text: str) -> dict:
     Runs a single piece of text through FinBERT and returns
     the predicted label (positive/negative/neutral) with a confidence score.
     """
-    result = _sentiment_pipeline(text)[0]
+    sentiment_pipeline = _get_sentiment_pipeline()
+    result = sentiment_pipeline(text)[0]
     return {
         "label": result["label"],
         "score": round(result["score"], 4),
