@@ -120,12 +120,27 @@ class TestRecommendationEndpoint:
         resp = client.get("/api/stocks/AAPL/recommendation", params={"timeframe": "10Y"})
         assert resp.status_code == 400
 
+    def test_unknown_ticker_returns_404(self, monkeypatch, client):
+        def raise_value_error(ticker, period):
+            raise ValueError(f"No data found for {ticker}")
+        monkeypatch.setattr("app.routers.stocks.fetch_stock_data", raise_value_error)
+
+        resp = client.get("/api/stocks/FAKE123/recommendation")
+        assert resp.status_code == 404
+
+    def test_unexpected_error_returns_500(self, monkeypatch, client):
+        def raise_generic_error(ticker, period):
+            raise RuntimeError("yfinance timed out")
+        monkeypatch.setattr("app.routers.stocks.fetch_stock_data", raise_generic_error)
+
+        resp = client.get("/api/stocks/AAPL/recommendation")
+        assert resp.status_code == 500
+
 
 class TestSentimentEndpoint:
     def test_returns_mocked_sentiment(self, monkeypatch, client):
-        monkeypatch.setattr(
-            "app.routers.stocks.analyze_ticker_sentiment",
-            lambda ticker, limit=10: {
+        async def fake_analyze_ticker_sentiment(ticker, limit=10):
+            return {
                 "ticker": ticker,
                 "articles": [
                     {"title": "Good news", "publisher": "Reuters", "link": "http://x",
@@ -133,8 +148,9 @@ class TestSentimentEndpoint:
                 ],
                 "summary": {"positive": 1, "negative": 0, "neutral": 0},
                 "overall_sentiment": "positive",
-            },
-        )
+            }
+        monkeypatch.setattr("app.routers.stocks.analyze_ticker_sentiment", fake_analyze_ticker_sentiment)
+
         resp = client.get("/api/stocks/AAPL/sentiment")
         assert resp.status_code == 200
         assert resp.json()["overall_sentiment"] == "positive"
@@ -173,9 +189,8 @@ class TestPredictEndpoint:
 
 class TestFinalRecommendationEndpoint:
     def test_returns_mocked_final_recommendation(self, monkeypatch, client):
-        monkeypatch.setattr(
-            "app.routers.stocks.get_final_recommendation",
-            lambda ticker, timeframe="1Y": {
+        async def fake_get_final_recommendation(ticker, timeframe="1Y"):
+            return {
                 "ticker": ticker,
                 "final_recommendation": "BUY",
                 "note": "All three signals agree (bullish).",
@@ -187,8 +202,9 @@ class TestFinalRecommendationEndpoint:
                 "weighted_bullish": 5,
                 "weighted_bearish": 0,
                 "total_weight": 5,
-            },
-        )
+            }
+        monkeypatch.setattr("app.routers.stocks.get_final_recommendation", fake_get_final_recommendation)
+
         resp = client.get("/api/stocks/AAPL/final-recommendation")
         assert resp.status_code == 200
         body = resp.json()
@@ -202,37 +218,3 @@ class TestFinalRecommendationEndpoint:
 
         resp = client.get("/api/stocks/AAPL/final-recommendation")
         assert resp.status_code == 500
-
-class TestRecommendationEndpoint:
-    def test_returns_well_formed_recommendation(self, monkeypatch, client):
-        monkeypatch.setattr(
-            "app.routers.stocks.fetch_stock_data",
-            lambda ticker, period: make_synthetic_history_df(),
-        )
-        resp = client.get("/api/stocks/AAPL/recommendation")
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["recommendation"] in {"BUY", "SELL", "HOLD"}
-        assert "votes" in body
-        assert "historical_accuracy" in body
-
-    def test_invalid_timeframe_returns_400(self, client):
-        resp = client.get("/api/stocks/AAPL/recommendation", params={"timeframe": "10Y"})
-        assert resp.status_code == 400
-
-    def test_unknown_ticker_returns_404(self, monkeypatch, client):
-        def raise_value_error(ticker, period):
-            raise ValueError(f"No data found for {ticker}")
-        monkeypatch.setattr("app.routers.stocks.fetch_stock_data", raise_value_error)
-
-        resp = client.get("/api/stocks/FAKE123/recommendation")
-        assert resp.status_code == 404
-
-    def test_unexpected_error_returns_500(self, monkeypatch, client):
-        def raise_generic_error(ticker, period):
-            raise RuntimeError("yfinance timed out")
-        monkeypatch.setattr("app.routers.stocks.fetch_stock_data", raise_generic_error)
-
-        resp = client.get("/api/stocks/AAPL/recommendation")
-        assert resp.status_code == 500
-        

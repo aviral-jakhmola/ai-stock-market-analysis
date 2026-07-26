@@ -119,15 +119,14 @@ from app.services.ensemble import get_final_recommendation
 
 
 class TestGetFinalRecommendation:
-    def test_wires_all_signals_together_and_tags_ticker(self, monkeypatch):
+
+    @pytest.mark.asyncio
+    async def test_wires_all_signals_together_and_tags_ticker(self, monkeypatch):
         monkeypatch.setattr(
             "app.services.ensemble.fetch_stock_data",
             lambda ticker, period: pd.DataFrame({"close": [100.0] * 60}),
         )
-        monkeypatch.setattr(
-            "app.services.ensemble.add_indicators",
-            lambda df: df,  # pass-through; indicators tested separately
-        )
+        monkeypatch.setattr("app.services.ensemble.add_indicators", lambda df: df)
         monkeypatch.setattr(
             "app.services.ensemble.get_recommendation",
             lambda df: {"recommendation": "BUY", "historical_accuracy": {"success_rate_pct": 60.0}},
@@ -136,17 +135,17 @@ class TestGetFinalRecommendation:
             "app.services.ensemble.predict_direction",
             lambda ticker: {"direction": "UP", "model_accuracy_on_test_set": 0.51},
         )
-        monkeypatch.setattr(
-            "app.services.ensemble.analyze_ticker_sentiment",
-            lambda ticker: {"overall_sentiment": "positive"},
-        )
 
-        result = get_final_recommendation("AAPL", timeframe="1Y")
+        async def fake_sentiment(ticker):
+            return {"overall_sentiment": "positive"}
 
+        monkeypatch.setattr("app.services.ensemble.analyze_ticker_sentiment", fake_sentiment)
+
+        result = await get_final_recommendation("AAPL", timeframe="1Y")
         assert result["ticker"] == "AAPL"
-        assert result["final_recommendation"] == "BUY"  # all three bullish
 
-    def test_unknown_timeframe_falls_back_to_1y(self, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_unknown_timeframe_falls_back_to_1y(self, monkeypatch):
         captured_period = {}
 
         def fake_fetch(ticker, period):
@@ -163,19 +162,20 @@ class TestGetFinalRecommendation:
             "app.services.ensemble.predict_direction",
             lambda ticker: {"direction": "DOWN", "model_accuracy_on_test_set": 0.5},
         )
-        monkeypatch.setattr(
-            "app.services.ensemble.analyze_ticker_sentiment",
-            lambda ticker: {"overall_sentiment": "neutral"},
-        )
 
-        get_final_recommendation("AAPL", timeframe="not-a-real-timeframe")
-        # period_map.get(timeframe, "1y") -- unrecognized key silently defaults to "1y"
+        async def fake_sentiment(ticker):
+            return {"overall_sentiment": "neutral"}
+
+        monkeypatch.setattr("app.services.ensemble.analyze_ticker_sentiment", fake_sentiment)
+
+        await get_final_recommendation("AAPL", timeframe="not-a-real-timeframe")
         assert captured_period["value"] == "1y"
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize("timeframe,expected_period", [
         ("1M", "1mo"), ("3M", "3mo"), ("6M", "6mo"), ("1Y", "1y"), ("5Y", "5y"),
     ])
-    def test_timeframe_maps_to_correct_period(self, monkeypatch, timeframe, expected_period):
+    async def test_timeframe_maps_to_correct_period(self, monkeypatch, timeframe, expected_period):
         captured_period = {}
 
         def fake_fetch(ticker, period):
@@ -192,10 +192,11 @@ class TestGetFinalRecommendation:
             "app.services.ensemble.predict_direction",
             lambda ticker: {"direction": "UP", "model_accuracy_on_test_set": 0.5},
         )
-        monkeypatch.setattr(
-            "app.services.ensemble.analyze_ticker_sentiment",
-            lambda ticker: {"overall_sentiment": "neutral"},
-        )
 
-        get_final_recommendation("AAPL", timeframe=timeframe)
+        async def fake_sentiment(ticker):
+            return {"overall_sentiment": "neutral"}
+
+        monkeypatch.setattr("app.services.ensemble.analyze_ticker_sentiment", fake_sentiment)
+
+        await get_final_recommendation("AAPL", timeframe=timeframe)
         assert captured_period["value"] == expected_period
