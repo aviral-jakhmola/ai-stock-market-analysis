@@ -45,7 +45,9 @@ jobs:
 
       - name: Run tests
         run: pytest -v
-        
+        env:
+          HF_API_TOKEN: ${{ secrets.HF_API_TOKEN }}
+
   frontend-tests:
     runs-on: ubuntu-latest
     defaults:
