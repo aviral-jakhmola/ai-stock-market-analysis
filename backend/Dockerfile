@@ -4,8 +4,8 @@ FROM python:3.13-slim AS base
 # show up immediately in `docker logs`, not just on container exit)
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    HF_HOME=/app/.cache/huggingface
+    PIP_NO_CACHE_DIR=1
+    
 
 WORKDIR /app
 
@@ -19,12 +19,9 @@ RUN pip install --upgrade pip
 
 COPY requirements.txt .
 
-# torch is installed separately from the CPU-only wheel index — the default
-# PyPI torch wheel bundles CUDA support, which isn't needed for a CPU-only
-# deployment and adds several GB to the image for nothing.
+
 RUN pip install -r requirements.txt
 
-RUN python -c "from transformers import pipeline; pipeline('sentiment-analysis', model='ProsusAI/finbert')"
 
 # Only copy what the app actually needs at runtime — not tests, not the venv,
 # not .env (secrets should never be baked into an image layer)
