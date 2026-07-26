@@ -1,4 +1,3 @@
-from transformers import pipeline
 from app.services.news_fetcher import fetch_news
 
 # FinBERT is loaded lazily, on first actual use — not at import time.
@@ -7,21 +6,32 @@ from app.services.news_fetcher import fetch_news
 # before anyone has made a single sentiment request. This matters most in
 # memory-constrained environments (e.g. Railway's 1GB container limit) —
 # search/technical/ML-only requests never touch this cost at all.
+
+
+from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
+import torch
+
 _sentiment_pipeline = None
 
 
 def _get_sentiment_pipeline():
-    """
-    Returns the cached FinBERT pipeline, building it on first call.
-    Every call after the first returns the same in-memory instance —
-    same performance characteristic as the old module-level load,
-    just deferred until actually needed.
-    """
     global _sentiment_pipeline
     if _sentiment_pipeline is None:
+        model = AutoModelForSequenceClassification.from_pretrained("ProsusAI/finbert")
+        tokenizer = AutoTokenizer.from_pretrained("ProsusAI/finbert")
+
+        # Dynamic int8 quantization of Linear layers — cuts memory
+        # footprint roughly in half for CPU inference, since the full
+        # 1GB Railway container limit leaves little room for the
+        # unquantized float32 model plus the rest of the app.
+        model = torch.quantization.quantize_dynamic(
+            model, {torch.nn.Linear}, dtype=torch.qint8
+        )
+
         _sentiment_pipeline = pipeline(
             "sentiment-analysis",
-            model="ProsusAI/finbert",
+            model=model,
+            tokenizer=tokenizer,
         )
     return _sentiment_pipeline
 

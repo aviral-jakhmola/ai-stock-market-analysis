@@ -45,15 +45,17 @@ function Dashboard() {
         }
     }, [location.state]);
 
-    
-
-
-    
-
     const fetchStock = async (symbol, tf) => {
         setLoading(true);
-        try {
-            const [historyRes, recRes, companyRes, sentimentRes, predictionRes, finalRecRes] = await Promise.all([
+
+        // Reset previous stock's optional data so stale sentiment/prediction
+        // from a prior ticker doesn't linger if this fetch partially fails.
+        setSentiment(null);
+        setPrediction(null);
+        setFinalRecommendation(null);
+
+        const [historyRes, recRes, companyRes, sentimentRes, predictionRes, finalRecRes] =
+            await Promise.allSettled([
                 api.get(`/api/stocks/${symbol}/history?timeframe=${tf}`),
                 api.get(`/api/stocks/${symbol}/recommendation?timeframe=${tf}`),
                 api.get(`/api/stocks/company/${symbol}`),
@@ -61,43 +63,64 @@ function Dashboard() {
                 api.get(`/api/stocks/${symbol}/predict`),
                 api.get(`/api/stocks/${symbol}/final-recommendation?timeframe=${tf}`),
             ]);
-            setStockData(historyRes.data);
-            setRecommendation(recRes.data);
-            setCompanyData(companyRes.data);
-            setSentiment(sentimentRes.data);
-            setPrediction(predictionRes.data);
-            setFinalRecommendation(finalRecRes.data);
-            return true;
-        } catch (error) {
-    console.error(error);
-    alert("Unable to fetch stock data.");
-    return false;
-}
- finally {
-            setLoading(false);
+
+        // Core data: if either of these fails, the page genuinely has nothing to show.
+        const coreFailed = historyRes.status === "rejected" || companyRes.status === "rejected";
+
+        if (historyRes.status === "fulfilled") setStockData(historyRes.value.data);
+        if (recRes.status === "fulfilled") setRecommendation(recRes.value.data);
+        if (companyRes.status === "fulfilled") setCompanyData(companyRes.value.data);
+
+        // Optional/slower data: log failures but don't block the page.
+        if (sentimentRes.status === "fulfilled") {
+            setSentiment(sentimentRes.value.data);
+        } else {
+            console.error("Sentiment fetch failed:", sentimentRes.reason);
         }
+
+        if (predictionRes.status === "fulfilled") {
+            setPrediction(predictionRes.value.data);
+        } else {
+            console.error("Prediction fetch failed:", predictionRes.reason);
+        }
+
+        if (finalRecRes.status === "fulfilled") {
+            setFinalRecommendation(finalRecRes.value.data);
+        } else {
+            console.error("Final recommendation fetch failed:", finalRecRes.reason);
+        }
+
+        setLoading(false);
+
+        if (coreFailed) {
+            console.error("Core stock data failed", { historyRes, companyRes });
+            alert("Unable to fetch stock data.");
+            return false;
+        }
+
+        return true;
     };
 
     const searchStock = async (symbol) => {
-    setTicker(symbol);
+        setTicker(symbol);
 
-    const success = await fetchStock(symbol, timeframe);
+        const success = await fetchStock(symbol, timeframe);
 
-    if (!success) return;
+        if (!success) return;
 
-    // Only save search history for logged-in users
-    const token = localStorage.getItem("token");
+        // Only save search history for logged-in users
+        const token = localStorage.getItem("token");
 
-    if (!token) return;
+        if (!token) return;
 
-    try {
-        await api.post("/api/search-history", {
-            ticker: symbol,
-        });
-    } catch (error) {
-        console.error("Failed to save search history:", error);
-    }
-};
+        try {
+            await api.post("/api/search-history", {
+                ticker: symbol,
+            });
+        } catch (error) {
+            console.error("Failed to save search history:", error);
+        }
+    };
 
     const changeTimeframe = (tf) => {
         setTimeframe(tf);
@@ -107,8 +130,6 @@ function Dashboard() {
     const latest = stockData.length > 0 ? stockData[stockData.length - 1] : null;
     const previous = stockData.length > 1 ? stockData[stockData.length - 2] : null;
 
-    
-
     const trend = latest && previous
         ? latest.close > previous.close
             ? "up"
@@ -116,8 +137,6 @@ function Dashboard() {
             ? "down"
             : "neutral"
         : "neutral";
-
-    
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
