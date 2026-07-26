@@ -41,6 +41,31 @@ function FinalRecommendationCard({ data, recommendation, prediction, sentiment }
         neutral: "text-gray-500 dark:text-gray-400",
     };
 
+        const fallbackDetail = {
+        technical: recommendation?.recommendation ?? null, // "BUY" | "SELL" | "HOLD"
+        ml: prediction?.direction ?? null,                  // "UP" | "DOWN"
+        sentiment: sentiment?.overall_sentiment
+            ? sentiment.overall_sentiment.toUpperCase()
+            : null,                                          // "POSITIVE" | "NEGATIVE" | "NEUTRAL"
+    };
+
+    const fallbackColor = {
+        technical: {
+            BUY: "text-green-600 dark:text-green-400",
+            SELL: "text-red-600 dark:text-red-400",
+            HOLD: "text-gray-500 dark:text-gray-400",
+        },
+        ml: {
+            UP: "text-green-600 dark:text-green-400",
+            DOWN: "text-red-600 dark:text-red-400",
+        },
+        sentiment: {
+            POSITIVE: "text-green-600 dark:text-green-400",
+            NEGATIVE: "text-red-600 dark:text-red-400",
+            NEUTRAL: "text-gray-500 dark:text-gray-400",
+        },
+    };
+
     // When the ensemble endpoint fails, fall back to showing whatever
     // individual signals we do have, rather than nothing.
     const sources = [
@@ -140,9 +165,13 @@ function FinalRecommendationCard({ data, recommendation, prediction, sentiment }
                                                 {item.detail}
                                             </span>
                                         </>
+                                    ) : fallbackDetail[key] ? (
+                                        <span className={`font-semibold ${fallbackColor[key][fallbackDetail[key]] || "text-gray-500 dark:text-gray-400"}`}>
+                                            {fallbackDetail[key]}
+                                        </span>
                                     ) : (
                                         <span className="text-xs text-gray-400 dark:text-gray-500 italic">
-                                            available
+                                            —
                                         </span>
                                     )}
                                     <svg
