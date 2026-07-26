@@ -22,9 +22,7 @@ COPY requirements.txt .
 # torch is installed separately from the CPU-only wheel index — the default
 # PyPI torch wheel bundles CUDA support, which isn't needed for a CPU-only
 # deployment and adds several GB to the image for nothing.
-RUN grep -v "^torch==" requirements.txt > requirements-notorch.txt \
-    && pip install -r requirements-notorch.txt \
-    && pip install $(grep "^torch==" requirements.txt) --index-url https://download.pytorch.org/whl/cpu
+RUN pip install -r requirements.txt
 
 RUN python -c "from transformers import pipeline; pipeline('sentiment-analysis', model='ProsusAI/finbert')"
 
