@@ -134,9 +134,9 @@ def get_stock_recommendation(ticker: str, timeframe: str = "1Y"):
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.get("/{ticker}/sentiment", response_model=SentimentSummary)
-def get_stock_sentiment(ticker: str, limit: int = 10):
+async def get_stock_sentiment(ticker: str, limit: int = 10):
     try:
-        return analyze_ticker_sentiment(ticker, limit=limit)
+        return await analyze_ticker_sentiment(ticker, limit=limit)
     except Exception as e:
         print("ERROR:", e)
         raise HTTPException(status_code=500, detail=str(e))
@@ -150,9 +150,9 @@ def get_direction_prediction(ticker: str):
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.get("/{ticker}/final-recommendation", response_model=FinalRecommendation)
-def get_final_stock_recommendation(ticker: str, timeframe: str = "1Y"):
+async def get_final_stock_recommendation(ticker: str, timeframe: str = "1Y"):
     try:
-        return get_final_recommendation(ticker, timeframe=timeframe)
+        return await get_final_recommendation(ticker, timeframe=timeframe)
     except Exception as e:
         print("ERROR:", e)
         raise HTTPException(status_code=500, detail=str(e))

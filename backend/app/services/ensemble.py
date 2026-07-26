@@ -5,7 +5,7 @@ from app.services.ml_predictor import predict_direction
 from app.services.sentiment import analyze_ticker_sentiment
 
 
-def get_final_recommendation(ticker: str, timeframe: str = "1Y") -> dict:
+async def get_final_recommendation(ticker: str, timeframe: str = "1Y") -> dict:
     """
     Fetches technical, ML, and sentiment signals for a ticker and combines
     them into one final weighted recommendation.
@@ -20,13 +20,12 @@ def get_final_recommendation(ticker: str, timeframe: str = "1Y") -> dict:
 
     technical = get_recommendation(df)
     prediction = predict_direction(ticker)
-    sentiment = analyze_ticker_sentiment(ticker)
+    sentiment = await analyze_ticker_sentiment(ticker)   # <-- only real change
 
     combined = combine_signals(technical, prediction, sentiment)
     combined["ticker"] = ticker
 
     return combined
-
 
 def _technical_vote(technical: dict) -> str:
     """
