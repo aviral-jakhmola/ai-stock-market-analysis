@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -17,7 +17,6 @@ router = APIRouter(
     tags=["Search History"],
 )
 
-# ↓↓↓ Paste the POST endpoint HERE ↓↓↓
 
 @router.post("", response_model=SearchHistoryResponse)
 def log_search(
@@ -35,7 +34,7 @@ def log_search(
     )
 
     if existing:
-        existing.searched_at = datetime.utcnow()
+        existing.searched_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(existing)
         return existing
@@ -51,8 +50,6 @@ def log_search(
 
     return history
 
-
-# ↓↓↓ Then paste the GET endpoint BELOW the POST ↓↓↓
 
 @router.get("", response_model=list[SearchHistoryResponse])
 def get_search_history(
