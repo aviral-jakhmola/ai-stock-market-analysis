@@ -15,7 +15,7 @@ AI FDSS is an AI-powered stock market decision support system that combines:
 
 - Technical indicators
 - Company fundamentals
-- FinBERT sentiment analysis
+- Financial news sentiment analysis using FinBERT via the Hugging Face Inference API
 - XGBoost trend prediction
 - Explainable recommendation engine
 
@@ -28,7 +28,7 @@ Instead of predicting exact prices, the system predicts market direction and com
 - 📈 Interactive stock dashboard with candlestick and volume charts
 - 📊 Technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands)
 - 🤖 XGBoost-based market direction prediction
-- 📰 FinBERT financial news sentiment analysis
+- 📰 Financial news sentiment analysis using FinBERT via the Hugging Face Inference API
 - 🧠 Explainable weighted BUY / HOLD / SELL recommendation engine
 - 🔐 JWT authentication with protected routes
 - ⭐ Personalized watchlist and search history
@@ -162,27 +162,29 @@ graph TD
 
 ```text
 ai-stock-market-analysis/
-├── .github/workflows/   # CI/CD Workflows (ci.yml)
+├──research/
+|   └── lstm_predictor.py  # Initial LSTM experiment (kept for reference)
+├── .github/workflows/    # CI/CD Workflows (ci.yml)
 ├── backend/
 │   ├── app/
-│   │   ├── auth/        # JWT & Password Security (dependencies.py, security.py)
-│   │   ├── models/      # SQLAlchemy Database Models (user.py, watchlist.py, search_history.py)
-│   │   ├── routers/     # REST Endpoints (auth.py, stocks.py, watchlist.py, search_history.py)
-│   │   ├── schemas/     # Pydantic Schemas (user.py, stock.py, watchlist.py, search_history.py)
-│   │   ├── services/    # Core Logic (ensemble.py, sentiment.py, indicators.py, ml_predictor.py)
-│   │   └── main.py      # FastAPI App Entry & Startup DB Initialization
-│   ├── tests/           # Pytest Suite (conftest.py, test_conftest_sanity.py)
+│   │   ├── auth/         # JWT & Password Security (dependencies.py, security.py)
+│   │   ├── models/       # SQLAlchemy Database Models (user.py, watchlist.py, search_history.py)
+│   │   ├── routers/      # REST Endpoints (auth.py, stocks.py, watchlist.py, search_history.py)
+│   │   ├── schemas/      # Pydantic Schemas (user.py, stock.py, watchlist.py, search_history.py)
+│   │   ├── services/     # Core Logic (ensemble.py, sentiment.py, indicators.py, ml_predictor.py)
+│   │   └── main.py       # FastAPI App Entry & Startup DB Initialization
+│   ├── tests/            # Pytest Suite (conftest.py, test_conftest_sanity.py)
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── components/  # Reusable UI (FinalRecommendationCard, SentimentCard, WatchlistButton)
-│   │   ├── context/     # React Context State (AuthContext.jsx)
-│   │   ├── pages/       # Route Views (Dashboard.jsx, Login.jsx, Register.jsx, Profile.jsx)
-│   │   └── services/    # Axios API Integrations (api.js)
+│   │   ├── components/   # Reusable UI (FinalRecommendationCard, SentimentCard, WatchlistButton)
+│   │   ├── context/      # React Context State (AuthContext.jsx)
+│   │   ├── pages/        # Route Views (Dashboard.jsx, Login.jsx, Register.jsx, Profile.jsx)
+│   │   └── services/     # Axios API Integrations (api.js)
 │   ├── Dockerfile
 │   └── package.json
-└── docker-compose.yml   # Multi-container orchestration (MySQL + Backend + Frontend)
+└── docker-compose.yml    # Multi-container orchestration (MySQL + Backend + Frontend)
 ```
 
 ---
@@ -307,22 +309,22 @@ The predictive backbone of AI FDSS is built on a split quantitative design, comb
 | Feature Engineering| ---> 16 tabular features
 +----------+---------+
            |
-           +----------------------------------+
-           |                                  |
-           v (Chronological Split)            v (Most Recent Row)
-+----------+---------+                        |
-|  Train / Test Sets |                        |
-+----------+---------+                        |
-           |                                  |
-           v (XGBoost Trainer)                |
-+----------+---------+                        |
-| Model Evaluation   |                        |
-| (Accuracy ~51%)    |                        |
-+----------+---------+                        |
-           |                                  |
-           v                                  v
+           +----------------------------------------+
+           |                                        |
+           v (Chronological Split)                  v (Financial News)
++----------+---------+              +---------------+---------------+  
+|  Train / Test Sets |              |      FinBERT Sentiment        |    
++----------+---------+              |  (Hugging Face Inference API) |
+           |                        +---------------+---------------+
+           v (XGBoost Trainer)                      |
++----------+---------+                              |
+| Model Evaluation   |                              |
+| (Accuracy ~51%)    |                              |
++----------+---------+                              |
+           |                                        |
+           v                                        v
 +----------+----------------------------------+--------+
-|                      XGBoost Classifier              |
+|                    XGBoost Classifier                |
 +------------------------------+-----------------------+
                                |
                                v (Outputs Up/Down Probability)
@@ -393,11 +395,12 @@ npm run test
 
 ## 🚀 DevOps, CI/CD, and Cloud Deployments
 
-- Backend deployed on Railway using Docker
+- Backend containerized using Docker and deployed on Railway
 - Frontend deployed on Vercel
-- CI/CD automated with GitHub Actions
-- Automatic database initialization on startup
-- FinBERT model cached during Docker build to eliminate cold starts
+- CI/CD automated using GitHub Actions
+- Automatic database initialization during backend startup
+- Environment variables securely managed through Railway, Vercel, and GitHub Secrets
+- FinBERT inference performed through the Hugging Face Inference API to minimize backend memory usage
 
 ---
 
@@ -407,13 +410,15 @@ npm run test
 - **Challenge:** LSTM price prediction produced low error but failed to outperform a simple baseline due to the difficulty of forecasting exact prices.
 - **Solution:** Switched to an **XGBoost classifier** that predicts market direction (UP/DOWN), providing probability-based and more interpretable results.
 
-### 2. FinBERT Memory Usage
-- **Challenge:** Loading FinBERT at startup exceeded Railway's memory limits.
-- **Solution:** Implemented **lazy loading**, so the model is loaded only when sentiment analysis is requested.
+### 2. Production Memory Constraints
 
-### 3. FinBERT Cold Starts
-- **Challenge:** Downloading model weights during the first request caused long delays and 502 timeouts.
-- **Solution:** Pre-downloaded and cached FinBERT weights during the Docker build, eliminating runtime downloads.
+- **Challenge:** Hosting the FinBERT transformer locally exceeded Railway's 1 GB memory limit, making production deployment unreliable.
+- **Solution:** Redesigned the sentiment analysis pipeline to use the Hugging Face Inference API instead of loading the transformer model inside the backend.
+
+### 3. Asynchronous AI Pipeline
+
+- **Challenge:** Migrating the sentiment analysis service from local inference to an external API required asynchronous network requests, which initially caused runtime errors due to mixed synchronous and asynchronous code.
+- **Solution:** Refactored the entire sentiment pipeline to use Python's async/await pattern consistently across the FastAPI routes, sentiment service, and ensemble recommendation engine.
 
 ### 4. Production Database Initialization
 - **Challenge:** Missing database tables caused backend startup failures that appeared as CORS errors in the frontend.
