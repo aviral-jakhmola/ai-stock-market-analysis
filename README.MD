@@ -40,7 +40,7 @@ Instead of predicting exact prices, the system predicts market direction and com
 - **Live Application Link**: [https://ai-stock-market-analysis-nine.vercel.app](https://ai-stock-market-analysis-nine.vercel.app/)
 - **Frontend SPA Hosting**: Deployed on Vercel [https://ai-stock-market-analysis-nine.vercel.app](https://ai-stock-market-analysis-nine.vercel.app/)
 - **Backend API Hosting**: Deployed via Docker on Railway [https://ai-stock-market-analysis-production.up.railway.app](https://ai-stock-market-analysis-production.up.railway.app/)
-- **Video Walkthrough**: *Coming Soon*
+- **Video Walkthrough**: https://youtu.be/awsn62pvgnk
 
 ---
 
@@ -447,4 +447,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## ✍️ Author
 **Aviral Jakhmola**
 - GitHub: [@aviral-jakhmola](https://github.com/aviral-jakhmola)
-- LinkedIn: *[Insert LinkedIn Link Placeholder]*
+- LinkedIn: https://www.linkedin.com/in/aviral-jakhmola-a23987333/
