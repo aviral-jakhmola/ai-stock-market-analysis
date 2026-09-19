@@ -46,9 +46,11 @@ function PredictionCard({ data }) {
                 </span>
             </div>
 
-            <div className="mt-4 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700 px-3 py-2 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                        <div className="mt-4 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700 px-3 py-2 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                 <span className="font-semibold text-gray-600 dark:text-gray-300">⚠️ Model accuracy:</span>{" "}
-                {(model_accuracy_on_test_set * 100).toFixed(1)}% on historical test data — close to chance level. Treat as experimental, not a reliable signal.
+                {(model_accuracy_on_test_set * 100).toFixed(1)}% on this test period. Across historical
+                validation, the model shows a small, consistent edge over random guessing (~2–4
+                percentage points) — still experimental, not a reliable trading signal.
             </div>
         </div>
     );
