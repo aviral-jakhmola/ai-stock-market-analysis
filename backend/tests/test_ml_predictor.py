@@ -13,6 +13,19 @@ from app.services.ml_predictor import (
 )
 
 
+def test_predict_direction_valid_ticker():
+    result = predict_direction("RELIANCE.NS")
+    assert result["direction"] in ("UP", "DOWN")
+    assert 0.0 <= result["probability_up"] <= 1.0
+    assert 0.0 <= result["probability_down"] <= 1.0
+    assert abs(result["probability_up"] + result["probability_down"] - 1.0) < 1e-6
+
+
+def test_predict_direction_invalid_ticker_raises():
+    with pytest.raises(ValueError):
+        predict_direction("THISISNOTAREALTICKER123")
+
+
 def make_synthetic_ohlcv(n=150, seed=42):
     """Deterministic fake price history with all columns predict_direction needs."""
     rng = np.random.default_rng(seed)
@@ -30,16 +43,20 @@ class TestPrepareClassificationDataset:
     def test_target_is_next_day_up_down(self):
         df = pd.DataFrame({"close": [10, 12, 11, 13, 9]})
         result = prepare_classification_dataset(df)
-        # next_close = [12, 11, 13, 9, NaN]; NaN > 9 evaluates to False, not NaN,
-        # so dropna() doesn't remove the last row here -- documenting that quirk.
-        assert result["target"].tolist() == [1, 0, 1, 0, 0]
-        assert len(result) == 5
+        # next_close = [12, 11, 13, 9, NaN]; the last row has no real
+        # "tomorrow" to compare against, so it's correctly dropped rather
+        # than silently mislabeled target=0 (NaN > x evaluates to False,
+        # not NaN -- next_close must be checked explicitly in dropna).
+        assert result["target"].tolist() == [1, 0, 1, 0]
+        assert len(result) == 4
 
     @pytest.mark.unit
     def test_drops_rows_with_nan_elsewhere(self):
         df = pd.DataFrame({"close": [10, 12, 11], "rsi_14": [None, 50.0, 60.0]})
         result = prepare_classification_dataset(df)
-        assert len(result) == 2  # first row dropped due to NaN rsi_14
+        # Row 0 drops (NaN rsi_14); row 2 also drops (no next_close --
+        # it's the last row). Only row 1 survives.
+        assert len(result) == 1
 
 
 class TestTrainTestSplitChronological:
